@@ -93,7 +93,7 @@ func getUpdateChartValues(ctx *fasthttp.RequestCtx) {
 		fmt.Fprintf(ctx, "")
 		return
 	}
-	fmt.Fprintf(ctx, string(body))
+	fmt.Fprint(ctx, string(body))
 }
 
 //create api server to listen
