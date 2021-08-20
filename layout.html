@@ -1,0 +1,154 @@
+<html>
+
+<head>
+    <title>
+        Etherium Chart
+    </title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/export-data.js"></script>
+</head>
+
+<body>
+    <div id="container">
+
+    </div>
+</body>
+<script>
+    $(document).ready(function() {
+        var d = []
+        d = generateData();
+        showChart(d);
+    });
+
+    function generateData(sdate, edate) {
+        var getdata = {
+            "sname": "ETH-INR"
+        };
+        if (sdate) {
+            getdata.sdate = sdate;
+        }
+        if (edate) {
+            getdata.edate = edate;
+        }
+        var data = []
+        $.ajax({
+            method: "GET",
+            contentType: JSON,
+            async: false,
+            url: "http://127.0.0.1:8080/getUpdatedChart",
+            data: getdata,
+            success: function(result) {
+                if (result) {
+                    result.forEach(element => {
+                        var x = new Date(element.Timestamp * 1000).getTime()
+                        data.push({
+                            "x": x,
+                            "open": element.Open,
+                            "high": element.High,
+                            "low": element.Low,
+                            "close": element.Close,
+                            "volume": element.Volume,
+                        })
+                    });
+                }
+            },
+            error: function(err) {
+                console.log(err)
+            }
+        });
+        // console.log(data)
+        return data;
+    }
+
+    function showChart(d = 0) {
+        var lastfeteched = d ? d[d.length - 1].x : [
+            [0]
+        ]
+
+        var maxtime = Math.floor(new Date(new Date(lastfeteched).getTime() + 7 * 60000).getTime() / 1000)
+        lastfeteched = Math.floor(lastfeteched / 1000)
+        Highcharts.stockChart('container', {
+            chart: {
+                events: {
+                    load: function() {
+                        // set up the updating of the chart each second
+                        var series = this.series[0];
+
+                        console.log("Last user fetched : ", lastfeteched)
+                        setInterval(function() {
+                            var currtimeinms = new Date().getTime()
+                            var currtime = Math.floor(currtimeinms / 1000)
+                                // console.log(maxtime + "<" + currtime)
+                            if (maxtime < currtime) {
+                                var a = generateData(lastfeteched, maxtime)
+                                console.log(a)
+                                if (a.length > 0) {
+
+                                    a.forEach(element => {
+                                        series.addPoint(element, true, true);
+                                    });
+                                    lastfeteched = Math.floor(a[a.length - 1].x / 1000)
+                                    maxtime = Math.floor(new Date(new Date(a[a.length - 1].x).getTime() + 7 * 60000).getTime() / 1000)
+                                }
+                            }
+                        }, 10000);
+                    }
+                }
+            },
+
+            time: {
+                useUTC: false
+            },
+            tooltip: {
+                shared: false,
+                formatter: function() {
+                    var p = this.point;
+                    var p = '';
+
+                    $.each(this.points, function(i, series) {
+                        p += 'Open: ' + series.point.open + '<br/>' +
+                            'High: ' + series.point.close + '<br/>' +
+                            'Low: ' + series.point.low + '<br/>' +
+                            'Close: ' + series.point.close + '<br/>' +
+                            'Volume: ' + series.point.volume + '<br/>';
+                    });
+                    return p;
+                }
+            },
+            title: {
+                text: 'ETH-INR stock price by minute'
+            },
+
+            rangeSelector: {
+                buttons: [{
+                    type: 'hour',
+                    count: 1,
+                    text: '1h'
+                }, {
+                    type: 'day',
+                    count: 1,
+                    text: '1D'
+                }, {
+                    type: 'all',
+                    count: 1,
+                    text: 'All'
+                }],
+                selected: 1,
+                inputEnabled: false
+            },
+
+            series: [{
+                name: 'ETH-INR',
+                type: 'candlestick',
+                data: d,
+                tooltip: {
+                    valueDecimals: 2
+                }
+            }]
+        });
+    }
+</script>
+
+</html>
